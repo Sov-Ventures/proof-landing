@@ -1,0 +1,3 @@
+[submodule ".Trash/eliza"]
+	path = .Trash/eliza
+	url = https://github.com/alpha8eta/eliza
