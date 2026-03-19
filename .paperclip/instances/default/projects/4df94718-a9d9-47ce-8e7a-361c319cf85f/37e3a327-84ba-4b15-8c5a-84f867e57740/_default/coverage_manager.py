@@ -9,10 +9,12 @@ of the BTC holdings to cover.
 Features:
 - 6 regimes → coverage ratios (40%–70%)
 - IV (DVOL) overrides when implied vol diverges from price regime
+- Configurable DVOL fallback when live Deribit feed is unavailable
 - Circuit breakers for rapid rallies, consecutive assignments, monthly P&L
+- Structured logging/alerting when circuit breakers trigger
 - Static/default regime fallback when live model is unavailable
 
-Author: Zeta (Trading Engineer) | ZER-121
+Author: Zeta (Trading Engineer) | ZER-121, ZER-123
 Config: Sigma (Head of Research) | ZER-116
 """
 
@@ -144,6 +146,7 @@ class CoverageManager:
                 "fallback_on_model_failure": 0.60,
                 "min_coverage_ratio": 0.0,
                 "max_coverage_ratio": 0.70,
+                "dvol_fallback": None,
             },
         }
 
@@ -162,6 +165,11 @@ class CoverageManager:
     @property
     def max_coverage(self) -> float:
         return self._defaults.get("max_coverage_ratio", 0.70)
+
+    @property
+    def dvol_fallback(self) -> Optional[float]:
+        """Fallback DVOL value when live Deribit feed is unavailable (ZER-117)."""
+        return self._defaults.get("dvol_fallback")
 
     def get_coverage(
         self,
@@ -186,8 +194,14 @@ class CoverageManager:
             return cb_decision
 
         # Step 2: IV overrides take precedence over regime map
-        if dvol is not None:
-            iv_decision = self._check_iv_overrides(dvol, regime)
+        # Use DVOL fallback if no live value provided (Deribit creds pending ZER-117)
+        effective_dvol = dvol
+        if effective_dvol is None and self.dvol_fallback is not None:
+            effective_dvol = self.dvol_fallback
+            logger.info("Using DVOL fallback value %.1f (live feed unavailable)", effective_dvol)
+
+        if effective_dvol is not None:
+            iv_decision = self._check_iv_overrides(effective_dvol, regime)
             if iv_decision is not None:
                 return iv_decision
 
@@ -220,6 +234,10 @@ class CoverageManager:
 
         if dvol >= 80 and dvol_above:
             ratio = self._clamp(dvol_above["coverage_ratio"])
+            logger.info(
+                "IV_OVERRIDE | dvol=%.1f | threshold=above_80 | coverage=%.0f%%",
+                dvol, ratio * 100,
+            )
             if ratio == 0.0:
                 return CoverageDecision(
                     coverage_ratio=0.0,
@@ -236,7 +254,10 @@ class CoverageManager:
             )
 
         if dvol <= 30 and dvol_below:
-            ratio = dvol_below["coverage_ratio"]
+            logger.info(
+                "IV_OVERRIDE | dvol=%.1f | threshold=below_30 | action=suspend_overlay",
+                dvol,
+            )
             return CoverageDecision(
                 coverage_ratio=0.0,
                 regime=regime or "unknown",
@@ -280,9 +301,12 @@ class CoverageManager:
         if btc_24h_change_pct is not None and btc_24h_change_pct >= rally_threshold:
             self._cb_state.pause_writes_until = now + 48 * 3600  # 48h pause
             logger.warning(
-                "Circuit breaker: BTC 24h rally %.1f%% >= %.1f%% threshold, pausing 48h",
+                "CIRCUIT_BREAKER_TRIGGERED | type=rally_pause | "
+                "btc_24h_change=%.1f%% | threshold=%.1f%% | pause_hours=48 | "
+                "resumes_at=%s",
                 btc_24h_change_pct,
                 rally_threshold,
+                time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self._cb_state.pause_writes_until)),
             )
             return CoverageDecision(
                 coverage_ratio=0.0,
@@ -305,7 +329,8 @@ class CoverageManager:
         if self._cb_state.consecutive_assignments >= max_consecutive:
             self._cb_state.pause_cycles_remaining = 1
             logger.warning(
-                "Circuit breaker: %d consecutive assignments (max %d), pausing 1 cycle",
+                "CIRCUIT_BREAKER_TRIGGERED | type=consecutive_assignments | "
+                "count=%d | max=%d | pause_cycles=1",
                 self._cb_state.consecutive_assignments,
                 max_consecutive,
             )
@@ -331,7 +356,8 @@ class CoverageManager:
         if check_negative and pnl_btc < 0:
             self._cb_state.needs_parameter_review = True
             logger.warning(
-                "Monthly P&L negative (%.6f BTC), flagging for parameter review",
+                "CIRCUIT_BREAKER_TRIGGERED | type=negative_monthly_pnl | "
+                "pnl_btc=%.6f | action=review_parameters",
                 pnl_btc,
             )
 
