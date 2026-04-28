@@ -133,18 +133,85 @@ These are very thin margins -- not actionable for active trading.
 
 ---
 
+---
+
+## REVISION: Apples-to-Apples Historical Borrow Rate Comparison
+
+**Important correction:** The initial analysis used snapshot borrow rates from `/api/v5/public/interest-rate-loan-quota` (a single point-in-time daily rate extrapolated to annual). This was not apples-to-apples with the 365-day historical funding rate averages.
+
+**Fix:** Used `/api/v5/finance/savings/lending-rate-history` to fetch ~5,000 hourly borrow rate samples per coin (~208 days of history), then computed the true historical average borrow APR.
+
+### Key Finding: Snapshot Rates Understate Historical Borrow Costs
+
+Many coins' snapshot borrow rates were LOWER than their historical average, meaning the initial analysis was **too optimistic** for some coins:
+
+| Coin | Snapshot APR | Hist Avg APR | Hist Median APR | Delta |
+|------|-------------|-------------|-----------------|-------|
+| AXS | 39.0% | **64.2%** | 35.0% | +25.2% |
+| BARD | 29.0% | **51.8%** | 1.0% | +22.8% |
+| ONT | 40.0% | **68.8%** | 34.0% | +28.8% |
+| FLOW | 1.0% | **3.1%** | 1.0% | +2.1% |
+| ZIL | 8.0% | **20.8%** | 1.0% | +12.8% |
+| ZORA | 8.0% | **81.5%** | 39.0% | +73.5% |
+| MOVE | 27.0% | **64.1%** | 47.0% | +37.1% |
+| COMP | 29.0% | **13.5%** | 1.0% | -15.5% |
+| BLUR | 38.0% | **25.3%** | 1.0% | -12.7% |
+| POL | 1.0% | **6.5%** | 1.0% | +5.5% |
+
+Borrow rates are extremely bimodal — most coins show median ~1% (no demand) but avg far higher due to sporadic spikes (some hitting 365% during squeeze events).
+
+### Revised Arb Ranking (Historical Borrow Rates)
+
+| # | Coin | Direction | Funding APR | Hist Borrow APR | **Net Arb** |
+|---|------|-----------|------------|----------------|-------------|
+| 1 | **AXS** | Long Perp + Short Spot | -117.9% | 64.2% | **+53.8%** |
+| 2 | **BARD** | Long Perp + Short Spot | -101.1% | 51.8% | **+49.3%** |
+| 3 | **ENJ** | Long Perp + Short Spot | -101.3% | 53.5% | **+47.8%** |
+| 4 | **FLOW** | Long Perp + Short Spot | -44.7% | 3.1% | **+41.6%** |
+| 5 | **ZIL** | Long Perp + Short Spot | -58.1% | 20.8% | **+37.3%** |
+| 6 | **ONT** | Long Perp + Short Spot | -97.4% | 68.8% | **+28.6%** |
+| 7 | **BLUR** | Long Perp + Short Spot | -51.5% | 25.3% | **+26.2%** |
+| 8 | **COMP** | Long Perp + Short Spot | -35.4% | 13.5% | **+21.9%** |
+| 9 | **ZK** | Long Perp + Short Spot | -23.3% | 7.8% | **+15.5%** |
+| 10 | **HUMA** | Long Perp + Short Spot | -35.0% | 23.6% | **+11.4%** |
+| 11 | **ICP** | Long Perp + Short Spot | -21.3% | 11.1% | **+10.2%** |
+| 12 | **SNX** | Long Perp + Short Spot | -21.8% | 15.1% | **+6.7%** |
+| 13 | **POL** | Long Perp + Short Spot | -11.6% | 6.5% | **+5.1%** |
+
+**Eliminated (negative net arb with historical borrow):** BERA (-1.7%), AUCTION (-7.0%), IP (-17.5%), AVNT (-19.8%), MOVE (-32.0%), ZORA (-50.0%)
+
+### Revised Tier-1 Recommendations
+
+1. **FLOW** — Net +41.6% APR, lowest borrow cost (3.1% avg), most executable
+2. **ZIL** — Net +37.3% APR, borrow bimodal (median 1%, avg 20.8%) — profitable when timed right
+3. **AXS** — Net +53.8% APR largest spread, but 64% borrow cost means large capital at risk
+4. **COMP** — Net +21.9% APR, lower volatility profile, 13.5% avg borrow
+5. **ZK** — Net +15.5% APR, 7.8% avg borrow, clean risk profile
+
+### Borrow Rate Regime Risk
+
+The bimodal nature of borrow rates is the key risk. Most coins show:
+- **Baseline**: 1% APR (no borrowing demand)
+- **Spike regime**: 100-365% APR (during short squeezes, liquidation cascades)
+
+Funding rates may be correlated with borrow rate spikes (both reflect short demand). The arb is most profitable when funding is deeply negative BUT borrow rates stay low — which may not always co-occur.
+
+---
+
 ## Next Steps
 
-1. **Backtest with historical borrow rates** to validate that the spread persists over time (not just current snapshot vs. historical funding)
-2. **Size the opportunity** -- check OKX lending quota and perp open interest/liquidity for top picks
+1. **Correlation analysis** — measure how borrow rate spikes correlate with funding rate extremes (the arb breaks if they spike simultaneously)
+2. **Size the opportunity** — check OKX lending quota and perp open interest/liquidity for top picks
 3. **Build a monitoring system** to alert when funding-borrow spread exceeds threshold
-4. **Prototype a delta-neutral bot** for the top 3-5 coins, starting with small size
-5. **Cross-venue comparison** -- check if same arb exists on Binance/Bybit with different borrow rates
+4. **Prototype a delta-neutral bot** for FLOW and ZK (lowest borrow cost, cleanest spreads)
+5. **Cross-venue comparison** — check if same arb exists on Binance/Bybit with different borrow rates
 
 ---
 
 ## Data Files
 
 - Analysis script: `reports/ZER-1305-okx-funding-borrow-arb-analysis.py`
+- Historical borrow comparison script: `reports/ZER-1305-historical-borrow-rates.py`
 - Raw JSON data: `reports/ZER-1305-okx-funding-borrow-arb-data.json`
+- Historical borrow comparison data: `reports/ZER-1305-historical-borrow-comparison.json`
 - This report: `reports/ZER-1305-okx-funding-borrow-arb-analysis-2026-04-28.md`
