@@ -23,8 +23,15 @@ export interface DecisionTraceLifecycleEdgeHint {
   fromSourceId: string;
 }
 
+export interface CodeArtifact {
+  repo?: string;
+  ref?: string;
+  filePath?: string;
+}
+
 export interface DecisionTraceEventMetadata {
   lifecycleEdge?: DecisionTraceLifecycleEdgeHint;
+  codeArtifact?: CodeArtifact;
   strategyKey?: string;
   symbol?: string;
   positionId?: string;

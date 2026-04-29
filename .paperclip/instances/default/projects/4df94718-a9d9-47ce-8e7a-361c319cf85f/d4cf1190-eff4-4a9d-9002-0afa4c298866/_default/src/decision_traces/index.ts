@@ -1,4 +1,5 @@
 export type {
+  CodeArtifact,
   DecisionTraceEventKind,
   DecisionTraceWriteEvent,
   ExtractedDecisionTrace,
@@ -20,6 +21,7 @@ export { PostgresDecisionTraceRepository } from "./repository";
 export type { PgQueryable } from "./repository";
 export {
   PaperclipDecisionTraceBridge,
+  type PaperclipIssueEventBase,
   type PaperclipIssueCommentCreatedEvent,
   type PaperclipIssueStatusChangedEvent,
   type PaperclipIssueReassignedEvent,
