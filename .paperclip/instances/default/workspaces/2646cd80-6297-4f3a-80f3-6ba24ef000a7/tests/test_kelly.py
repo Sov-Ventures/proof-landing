@@ -70,8 +70,9 @@ class TestEmpiricalKelly:
         assert cv > 0.2  # Higher uncertainty
 
     def test_insufficient_data(self):
-        """Too few trades => CV = 1.0 (maximum conservatism)."""
-        ek = EmpiricalKelly(min_trades_required=20, seed=42)
+        """Too few trades => CV = 1.0 (maximum conservatism). Q2: min=30."""
+        ek = EmpiricalKelly(seed=42)
+        assert ek.min_trades_required == 30
         returns = np.array([0.05, 0.03, 0.04])
         cv, _, _ = ek.compute_cv_edge(returns)
         assert cv == 1.0
@@ -90,9 +91,10 @@ class TestEmpiricalKelly:
         assert result.empirical_fraction <= result.kelly_fraction
 
     def test_max_fraction_cap(self):
-        """Position size should never exceed max_fraction."""
-        ek = EmpiricalKelly(max_fraction=0.10, seed=42)
-        returns = np.array([0.20] * 100)  # Extremely consistent high returns
+        """Position size should never exceed max_fraction. Q2 default: 20%."""
+        ek = EmpiricalKelly(seed=42)
+        assert ek.max_fraction == 0.20
+        returns = np.array([0.20] * 100)
         result = ek.size(
             fair_value=0.90,
             market_price=0.50,
@@ -100,7 +102,21 @@ class TestEmpiricalKelly:
             bankroll=10000,
             historical_returns=returns,
         )
-        assert result.empirical_fraction <= 0.10
+        assert result.empirical_fraction <= 0.20
+
+    def test_risk_off_regime_cap(self):
+        """Risk-off regime caps at 12% regardless of max_fraction."""
+        ek = EmpiricalKelly(max_fraction=0.20, seed=42)
+        returns = np.array([0.20] * 100)
+        result = ek.size(
+            fair_value=0.90,
+            market_price=0.50,
+            side="YES",
+            bankroll=10000,
+            historical_returns=returns,
+            regime="risk_off",
+        )
+        assert result.empirical_fraction <= 0.12
 
     def test_no_edge_no_bet(self):
         """No edge => zero position."""

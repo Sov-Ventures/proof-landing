@@ -92,8 +92,8 @@ class EmpiricalKelly:
         self,
         n_simulations: int = 10_000,
         lookback_trades: int = 100,
-        max_fraction: float = 0.25,
-        min_trades_required: int = 20,
+        max_fraction: float = 0.20,
+        min_trades_required: int = 30,
         seed: Optional[int] = None,
     ):
         """
@@ -155,6 +155,7 @@ class EmpiricalKelly:
         side: str,
         bankroll: float,
         historical_returns: Optional[np.ndarray] = None,
+        regime: Optional[str] = None,
     ) -> KellyResult:
         """
         Calculate empirical Kelly position size.
@@ -192,8 +193,11 @@ class EmpiricalKelly:
         empirical_f = kelly_f * (1.0 - cv_edge)
         empirical_f = max(empirical_f, 0.0)
 
-        # Apply max fraction cap
-        capped_f = min(empirical_f, self.max_fraction)
+        # Apply max fraction cap; tighter in risk-off regime (12%)
+        effective_max = self.max_fraction
+        if regime == "risk_off":
+            effective_max = min(effective_max, 0.12)
+        capped_f = min(empirical_f, effective_max)
 
         return KellyResult(
             kelly_fraction=kelly_f,
