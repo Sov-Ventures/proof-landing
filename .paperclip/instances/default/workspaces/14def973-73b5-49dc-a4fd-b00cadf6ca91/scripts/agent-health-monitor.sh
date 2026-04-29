@@ -16,8 +16,8 @@ PAPERCLIP_API_URL="${PAPERCLIP_API_URL:-http://localhost:3100}"
 COMPANY_ID="${PAPERCLIP_COMPANY_ID:-4df94718-a9d9-47ce-8e7a-361c319cf85f}"
 PAPERCLIP_API_KEY="${PAPERCLIP_API_KEY:-}"
 THETA_AGENT_ID="b681e965-c7d6-404b-b07d-a16a3ac642f5"
-THETA_MAX_GAP=3600  # 1 hour for Theta (stricter than general 2h)
-GENERAL_MAX_GAP=7200  # 2 hours for other agents
+THETA_MAX_GAP=3600  # 1 hour for Theta (investor relations — should always be active)
+GENERAL_MAX_GAP=14400  # 4 hours for other agents (episodic work agents routinely idle 2-3h)
 LOG_DIR="/Users/abreckler/.paperclip/instances/default/logs"
 
 mkdir -p "$LOG_DIR"
