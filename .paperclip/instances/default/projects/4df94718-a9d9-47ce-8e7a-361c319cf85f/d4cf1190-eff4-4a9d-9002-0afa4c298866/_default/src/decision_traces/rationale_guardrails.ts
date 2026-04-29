@@ -28,6 +28,25 @@ export interface FieldRequirement {
  * `guardrail:hint:<field>` tag but leave confidence unchanged.
  */
 const FIELD_REQUIREMENTS: Record<string, FieldRequirement[]> = {
+  // Issue creation should capture rationale for why the work was created.
+  issue_created: [
+    { field: "rationale", level: "recommended" },
+    { field: "authority", level: "recommended" },
+  ],
+  // Comments carry discussion context; rationale is recommended for quality.
+  issue_comment_created: [
+    { field: "rationale", level: "recommended" },
+  ],
+  // Status transitions should explain why the change was made.
+  issue_status_changed: [
+    { field: "rationale", level: "recommended" },
+    { field: "authority", level: "recommended" },
+  ],
+  // Approval requests should explain what is being asked and by whom.
+  approval_requested: [
+    { field: "rationale", level: "recommended" },
+    { field: "authority", level: "required" },
+  ],
   // Approvals must explain *why* and *who*; alternatives are recommended.
   approval_resolved: [
     { field: "rationale", level: "required" },

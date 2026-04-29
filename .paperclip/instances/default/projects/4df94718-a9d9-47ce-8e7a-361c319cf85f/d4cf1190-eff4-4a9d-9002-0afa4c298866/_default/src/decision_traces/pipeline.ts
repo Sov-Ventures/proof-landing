@@ -119,6 +119,19 @@ export class DecisionTracePipeline {
     }
 
     if (
+      event.sourceKind === "issue_status_changed" &&
+      event.metadata?.toStatus &&
+      (event.metadata.toStatus === "done" || event.metadata.toStatus === "cancelled")
+    ) {
+      await this.outcomeEmitter.emitIssueResolutionOutcome({
+        companyId: event.companyId,
+        issueSourceId: event.sourceId,
+        toStatus: event.metadata.toStatus as string,
+        resolvedAt: event.occurredAt,
+      });
+    }
+
+    if (
       event.sourceKind === "trade_exit" &&
       event.metadata?.lifecycleEdge?.edgeType === "entry_to_exit"
     ) {

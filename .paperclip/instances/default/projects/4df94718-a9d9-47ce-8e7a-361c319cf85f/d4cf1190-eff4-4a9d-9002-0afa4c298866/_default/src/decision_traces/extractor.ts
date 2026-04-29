@@ -9,11 +9,12 @@ export class HeuristicDecisionExtractor implements DecisionExtractor {
     const text = normalizeText(event.body);
     if (!text) return null;
 
-    const hasDecisionVerb = /(decide|approved|rejected|blocked|assign|reassign|ship|merge|enter|exit|skip|adjust)/.test(text);
+    const hasDecisionVerb = /(decide|approved|rejected|blocked|assign|reassign|ship|merge|enter|exit|skip|adjust|created|requested)/.test(text);
     const hasReasoningCue = /(because|due to|so that|reason|risk|tradeoff)/.test(text);
     const isTradeEvent = isTradeSourceKind(event.sourceKind);
+    const isStructuralEvent = isStructuralSourceKind(event.sourceKind);
 
-    if (!isTradeEvent && !hasDecisionVerb && !hasReasoningCue) {
+    if (!isTradeEvent && !isStructuralEvent && !hasDecisionVerb && !hasReasoningCue) {
       return null;
     }
 
@@ -41,8 +42,11 @@ function normalizeText(input: string): string {
 
 function mapTraceType(sourceKind: DecisionTraceWriteEvent["sourceKind"], text: string): string {
   if (isTradeSourceKind(sourceKind)) return sourceKind;
+  if (sourceKind === "issue_created") return "issue_creation";
+  if (sourceKind === "approval_requested") return "approval_request";
   if (sourceKind === "approval_resolved") return "approval_decision";
   if (sourceKind === "issue_reassigned") return "assignment_decision";
+  if (sourceKind === "issue_status_changed") return "status_transition";
   if (/blocked/.test(text)) return "escalation_decision";
   return "issue_decision";
 }
@@ -131,6 +135,8 @@ function deriveAuthority(
 }
 
 function deriveOutcomeSignal(sourceKind: DecisionTraceWriteEvent["sourceKind"], text: string): string | undefined {
+  if (sourceKind === "issue_created") return "issue_opened";
+  if (sourceKind === "approval_requested") return "approval_pending";
   if (sourceKind === "trade_entry") return "entered_position";
   if (sourceKind === "trade_exit") return "exited_position";
   if (sourceKind === "trade_skip") return "skipped_trade";
@@ -138,6 +144,7 @@ function deriveOutcomeSignal(sourceKind: DecisionTraceWriteEvent["sourceKind"], 
   if (/approved/.test(text)) return "approved";
   if (/rejected/.test(text)) return "rejected";
   if (/blocked/.test(text)) return "blocked";
+  if (/done|completed|resolved/.test(text)) return "resolved";
   return undefined;
 }
 
@@ -172,5 +179,16 @@ function isTradeSourceKind(sourceKind: DecisionTraceWriteEvent["sourceKind"]): s
     sourceKind === "trade_exit" ||
     sourceKind === "position_adjustment" ||
     sourceKind === "trade_skip"
+  );
+}
+
+/** Structural events always produce a trace regardless of verb/reasoning detection. */
+function isStructuralSourceKind(sourceKind: DecisionTraceWriteEvent["sourceKind"]): boolean {
+  return (
+    sourceKind === "issue_created" ||
+    sourceKind === "issue_status_changed" ||
+    sourceKind === "issue_reassigned" ||
+    sourceKind === "approval_requested" ||
+    sourceKind === "approval_resolved"
   );
 }

@@ -30,6 +30,13 @@ export interface ReviewOutcomeInput {
   resolvedAt: string;
 }
 
+export interface IssueResolutionOutcomeInput {
+  companyId: string;
+  issueSourceId: string;
+  toStatus: string;
+  resolvedAt: string;
+}
+
 export interface TradeOutcomeInput {
   companyId: string;
   exitSourceId: string;
@@ -144,6 +151,53 @@ export class OutcomeEdgeEmitter {
         resolvedAt: input.resolvedAt,
         strategyKey: input.strategyKey,
         symbol: input.symbol,
+      },
+    };
+
+    await this.insertTraceEdge(edge);
+    return edge;
+  }
+
+  /**
+   * Emit a `results_in` edge for an issue resolution (status → done/cancelled).
+   * Links the status-change decision trace → a new resolution outcome trace.
+   */
+  async emitIssueResolutionOutcome(input: IssueResolutionOutcomeInput): Promise<OutcomeEdgeRow | null> {
+    const decisionTrace = await this.findTraceBySource(input.companyId, input.issueSourceId);
+    if (!decisionTrace) return null;
+
+    const outcomeLabel = input.toStatus === "done" ? "completed" : "cancelled";
+    const outcomeSignal = input.toStatus === "done" ? "positive" : "neutral";
+
+    const outcomeTraceId = await this.insertOutcomeTrace({
+      companyId: input.companyId,
+      sourceKind: "issue_status_changed",
+      sourceId: `${input.issueSourceId}:outcome`,
+      traceType: "issue_resolution_outcome",
+      summary: `Issue resolved: ${outcomeLabel}`,
+      outcomeSignal,
+      outcomeNote: `Disposition: ${outcomeLabel}`,
+      resolvedAt: input.resolvedAt,
+      metadata: {
+        outcomeType: "issue_resolution",
+        outcomeLabel,
+        toStatus: input.toStatus,
+      },
+    });
+
+    if (!outcomeTraceId) return null;
+
+    const edge: OutcomeEdgeRow = {
+      companyId: input.companyId,
+      fromTraceId: decisionTrace.id,
+      toTraceId: outcomeTraceId,
+      edgeType: "results_in",
+      inferredBy: "issue_resolution_rule",
+      confidence: 0.92,
+      metadata: {
+        outcomeType: "issue_resolution",
+        outcomeLabel,
+        resolvedAt: input.resolvedAt,
       },
     };
 

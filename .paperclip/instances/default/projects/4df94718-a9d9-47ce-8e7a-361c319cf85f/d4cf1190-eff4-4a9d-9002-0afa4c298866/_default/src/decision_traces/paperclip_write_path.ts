@@ -13,6 +13,14 @@ export interface PaperclipIssueEventBase {
   codeArtifact?: CodeArtifact;
 }
 
+export interface PaperclipIssueCreatedEvent extends PaperclipIssueEventBase {
+  title: string;
+  description?: string;
+  parentIssueId?: string;
+  assigneeAgentId?: string;
+  assigneeUserId?: string;
+}
+
 export interface PaperclipIssueCommentCreatedEvent extends PaperclipIssueEventBase {
   commentId: string;
   body: string;
@@ -32,6 +40,13 @@ export interface PaperclipIssueReassignedEvent extends PaperclipIssueEventBase {
   note?: string;
 }
 
+export interface PaperclipApprovalRequestedEvent extends PaperclipIssueEventBase {
+  approvalId: string;
+  approvalType?: string;
+  title: string;
+  summary?: string;
+}
+
 export interface PaperclipApprovalResolvedEvent extends PaperclipIssueEventBase {
   approvalId: string;
   outcome: "approved" | "rejected" | "changes_requested";
@@ -41,6 +56,46 @@ export interface PaperclipApprovalResolvedEvent extends PaperclipIssueEventBase 
 
 export class PaperclipDecisionTraceBridge {
   constructor(private readonly hooks: DecisionTraceHooks) {}
+
+  async onIssueCreated(event: PaperclipIssueCreatedEvent): Promise<boolean> {
+    return this.hooks.onIssueCreated({
+      companyId: event.companyId,
+      issueId: event.issueId,
+      projectId: event.projectId,
+      goalId: event.goalId,
+      sourceId: event.issueId,
+      sourceRunId: event.runId,
+      actorAgentId: event.actorAgentId,
+      actorUserId: event.actorUserId,
+      occurredAt: normalizeTimestamp(event.occurredAt),
+      body: renderIssueCreatedBody(event),
+      metadata: buildIssueMetadata("issue_created", {
+        title: event.title,
+        parentIssueId: event.parentIssueId,
+        assigneeAgentId: event.assigneeAgentId,
+        assigneeUserId: event.assigneeUserId,
+      }, event.codeArtifact),
+    });
+  }
+
+  async onApprovalRequested(event: PaperclipApprovalRequestedEvent): Promise<boolean> {
+    return this.hooks.onApprovalRequested({
+      companyId: event.companyId,
+      issueId: event.issueId,
+      projectId: event.projectId,
+      goalId: event.goalId,
+      sourceId: event.approvalId,
+      sourceRunId: event.runId,
+      actorAgentId: event.actorAgentId,
+      actorUserId: event.actorUserId,
+      occurredAt: normalizeTimestamp(event.occurredAt),
+      body: renderApprovalRequestedBody(event),
+      metadata: buildIssueMetadata("approval_requested", {
+        approvalId: event.approvalId,
+        approvalType: event.approvalType,
+      }, event.codeArtifact),
+    });
+  }
 
   async onIssueCommentCreated(event: PaperclipIssueCommentCreatedEvent): Promise<boolean> {
     return this.hooks.onCommentCreated({
@@ -117,6 +172,28 @@ export class PaperclipDecisionTraceBridge {
       }, event.codeArtifact),
     });
   }
+}
+
+function renderIssueCreatedBody(event: PaperclipIssueCreatedEvent): string {
+  const parts = [`issue created: ${event.title}`];
+  if (event.description?.trim()) {
+    parts.push(`description: ${event.description.trim().slice(0, 200)}`);
+  }
+  if (event.parentIssueId) {
+    parts.push(`parent: ${event.parentIssueId}`);
+  }
+  return parts.join(". ");
+}
+
+function renderApprovalRequestedBody(event: PaperclipApprovalRequestedEvent): string {
+  const parts = [`approval requested: ${event.title}`];
+  if (event.approvalType?.trim()) {
+    parts.push(`type: ${event.approvalType.trim()}`);
+  }
+  if (event.summary?.trim()) {
+    parts.push(`summary: ${event.summary.trim()}`);
+  }
+  return parts.join(". ");
 }
 
 function renderStatusBody(event: PaperclipIssueStatusChangedEvent): string {

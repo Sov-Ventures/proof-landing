@@ -10,8 +10,16 @@ import type {
 export class DecisionTraceHooks {
   constructor(private readonly pipeline: DecisionTracePipeline) {}
 
+  async onIssueCreated(event: Omit<DecisionTraceWriteEvent, "sourceKind">): Promise<boolean> {
+    return this.pipeline.handleWriteEvent({ ...event, sourceKind: "issue_created" });
+  }
+
   async onCommentCreated(event: Omit<DecisionTraceWriteEvent, "sourceKind">): Promise<boolean> {
     return this.pipeline.handleWriteEvent({ ...event, sourceKind: "issue_comment_created" });
+  }
+
+  async onApprovalRequested(event: Omit<DecisionTraceWriteEvent, "sourceKind">): Promise<boolean> {
+    return this.pipeline.handleWriteEvent({ ...event, sourceKind: "approval_requested" });
   }
 
   async onApprovalResolved(event: Omit<DecisionTraceWriteEvent, "sourceKind">): Promise<boolean> {

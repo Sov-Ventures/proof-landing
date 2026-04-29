@@ -1,8 +1,10 @@
 export type DecisionTraceEventKind =
+  | "issue_created"
   | "issue_comment_created"
-  | "approval_resolved"
   | "issue_status_changed"
   | "issue_reassigned"
+  | "approval_requested"
+  | "approval_resolved"
   | "trade_signal"
   | "trade_entry"
   | "trade_exit"

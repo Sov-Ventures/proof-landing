@@ -22,13 +22,20 @@ export type { PgQueryable } from "./repository";
 export {
   PaperclipDecisionTraceBridge,
   type PaperclipIssueEventBase,
+  type PaperclipIssueCreatedEvent,
   type PaperclipIssueCommentCreatedEvent,
   type PaperclipIssueStatusChangedEvent,
   type PaperclipIssueReassignedEvent,
+  type PaperclipApprovalRequestedEvent,
   type PaperclipApprovalResolvedEvent,
 } from "./paperclip_write_path";
 export { OutcomeEdgeEmitter } from "./outcome_edge_emitter";
-export type { OutcomeEdgeRow, ReviewOutcomeInput, TradeOutcomeInput } from "./outcome_edge_emitter";
+export type {
+  OutcomeEdgeRow,
+  ReviewOutcomeInput,
+  TradeOutcomeInput,
+  IssueResolutionOutcomeInput,
+} from "./outcome_edge_emitter";
 export {
   validateRationalePayload,
   applyGuardrailResult,
