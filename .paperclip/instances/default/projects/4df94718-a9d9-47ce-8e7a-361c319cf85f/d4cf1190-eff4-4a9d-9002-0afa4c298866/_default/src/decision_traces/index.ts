@@ -29,6 +29,12 @@ export {
 } from "./paperclip_write_path";
 export { OutcomeEdgeEmitter } from "./outcome_edge_emitter";
 export type { OutcomeEdgeRow, ReviewOutcomeInput, TradeOutcomeInput } from "./outcome_edge_emitter";
+export {
+  validateRationalePayload,
+  applyGuardrailResult,
+  getFieldRequirements,
+} from "./rationale_guardrails";
+export type { GuardrailField, FieldRequirement, GuardrailViolation, GuardrailResult } from "./rationale_guardrails";
 
 import type { PgQueryable } from "./repository";
 import { PostgresDecisionTraceRepository } from "./repository";

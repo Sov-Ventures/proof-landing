@@ -1,6 +1,7 @@
 import type { DecisionTraceWriteEvent, ExtractedDecisionTrace, TradeLifecycleEdgeType, TraceEdgeType } from "./types";
 import type { DecisionExtractor } from "./extractor";
 import type { OutcomeEdgeEmitter } from "./outcome_edge_emitter";
+import { validateRationalePayload, applyGuardrailResult } from "./rationale_guardrails";
 
 export interface DecisionTraceRepository {
   insert(input: {
@@ -56,6 +57,10 @@ export class DecisionTracePipeline {
   async handleWriteEvent(event: DecisionTraceWriteEvent): Promise<boolean> {
     const extracted = await this.extractor.extract(event);
     if (!extracted) return false;
+
+    // ZER-1238: validate rationale payload quality and annotate trace.
+    const guardrailResult = validateRationalePayload(event.sourceKind, extracted);
+    applyGuardrailResult(extracted, guardrailResult);
 
     await this.repository.insert({
       companyId: event.companyId,
