@@ -1,0 +1,41 @@
+{
+  "strategy": "okx_funding_rate_arb",
+  "version": "1.0.0",
+  "description": "Delta-neutral funding rate arbitrage on OKX perpetual swaps",
+  "constraints": {
+    "max_position_size_usd": 5000,
+    "max_concurrent_assets": 2,
+    "exchange": "OKX",
+    "allowed_assets": ["TRX", "COMP"],
+    "margin_mode": "cross"
+  },
+  "circuit_breakers": {
+    "borrow_rate": {
+      "threshold_apr_pct": 50.0,
+      "description": "Exit position if current borrow APR exceeds 50%. Rationale: stressed regime borrow spikes to ~80% APR wipe out funding income.",
+      "action": "close_all_legs"
+    },
+    "funding_flip": {
+      "consecutive_periods": 3,
+      "description": "Exit if funding flips unfavorable for 3+ consecutive 8h periods.",
+      "action": "close_all_legs"
+    }
+  },
+  "monitoring": {
+    "check_interval_hours": 8,
+    "alert_on_circuit_breaker": true,
+    "alert_issue_id": "ZER-1305"
+  },
+  "risk_parameters": {
+    "leverage": "5x",
+    "expected_calm_borrow_apr_pct": 1.0,
+    "expected_stressed_borrow_apr_pct": 80.0,
+    "stressed_regime_probability_pct": 12.0,
+    "tail_event_probability_annual_pct": 3.0
+  },
+  "references": {
+    "monte_carlo_v2": "reports/ZER-1305-monte-carlo-v2-regime-switching-2026-04-29.md",
+    "analysis_script": "reports/ZER-1305-okx-funding-borrow-arb-analysis.py",
+    "deployment_guide": "reports/ZER-1305-flow-5k-deployment-guide-2026-04-29.md"
+  }
+}
